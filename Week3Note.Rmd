@@ -1,0 +1,588 @@
+---
+title: "Getting and Cleaning Data - Week3 Note"
+author: "David Honghao Shao"
+date: "October 25, 2014"
+output:
+  html_document:
+    toc: true
+    theme: united
+    highlight: zenburn
+---
+
+#Subsetting and sorting 
+##Subsetting-Quick Review
+```{r}
+set.seed(13435)
+X<-data.frame("var1"=sample(1:5), "var2"=sample(6:10),"var3"=sample(11:15))
+X<-X[sample(1:5),]
+X$var2[c(1,3)]=NA
+X
+```
+
+```{r}
+X[,1]
+```
+
+```{r}
+X[,"var1"]
+```
+
+```{r}
+X[1:2,"var2"]
+```
+
+```{r}
+X[(X$var1<=3 & X$var3>11),]
+```
+
+```{r}
+X[(X$var1<=3 | X$var3>11),]
+```
+"which" does not return indices of NAs
+```{r}
+X[which(X$var2>8),]
+```
+##Sorting
+```{r}
+sort(X$var1)
+```
+```{r}
+sort(X$var1, decreasing=TRUE)
+```
+"na.last" put NAs at the last of sorting
+```{r}
+sort(X$var2,na.last=TRUE)
+```
+order the dataframe by a particular variable
+```{r}
+X[order(X$var1),]
+```
+order the dataframe by two particular variable, var1 first then var3
+```{r}
+X[order(X$var1,X$var3),]
+```
+using "plyr" package to sort
+```{r}
+library(plyr)
+arrange(X,var1)
+```
+
+```{r}
+arrange(X,desc(var1))
+```
+##Adding rows and columns
+adding columns
+```{r}
+X$var4<-rnorm(5)
+X
+```
+using"cbind" to add columns
+```{r}
+Y<-cbind(X,rnorm(5))
+Y
+```
+
+```{r}
+Z<-rnorm(5)
+Y<-cbind(Z,X)
+Y
+```
+
+using"rbind" to add rows
+```{r}
+Y<-rbind(X,rnorm(5))
+Y
+```
+
+```{r}
+Z<-rnorm(5)
+Y<-rbind(Z,X)
+Y
+```
+
+#Summarizing data
+[Data Source](https://data.baltimorecity.gov/Community/Restaurants/k5ry-ef3g)
+
+##Getting the data from the web
+```{r}
+#if(!file.exists("./data")){dir.create("./data")}
+#fileUrl <- "https://data.baltimorecity.gov/api/views/k5ry-ef3g/rows.csv?accessType=DOWNLOAD"
+#download.file(fileUrl,destfile="./data/restaurants.csv",method="curl")
+restData <- read.csv("./data/restaurants.csv")
+```
+##Look at a bit of the data
+default is n=6
+```{r}
+head(restData,n=3)
+```
+
+```{r}
+tail(restData,n=3)
+```
+##Make summary
+```{r}
+summary(restData)
+```
+##More in depth information
+```{r}
+str(restData)
+```
+##Quantiles of quantitative variables
+```{r}
+quantile(restData$councilDistrict,na.rm=TRUE)
+```
+
+```{r}
+quantile(restData$councilDistrict,probs=c(0.5,0.75,0.9))
+```
+##Make table
+useNA="ifany" will tell the number of missing value
+Default of "table"" will not tell the number of missing value
+```{r}
+table(restData$zipCode,useNA="ifany")
+```
+Two dimensional Table ( can be 3D )
+```{r}
+table(restData$councilDistrict,restData$zipCode)
+```
+##Check for missing values
+```{r}
+sum(is.na(restData$councilDistrict))
+```
+
+```{r}
+any(is.na(restData$councilDistrict))
+```
+
+```{r}
+all(restData$zipCode > 0)
+```
+##Row and column sums
+```{r}
+colSums(is.na(restData))
+
+```
+
+```{r}
+colSums(X)
+
+```
+
+```{r}
+rowSums(is.na(restData))
+
+```
+
+```{r}
+rowSums(X)
+
+```
+
+```{r}
+all(colSums(is.na(restData))==0)
+```
+##Values with specific characteristics
+```{r}
+table(restData$zipCode %in% c("21212"))
+```
+
+```{r}
+table(restData$zipCode %in% c("21212","21213"))
+```
+
+```{r}
+filter<-restData[restData$zipCode %in% c("21212","21213"),]
+head(filter)
+```
+##Cross tabs
+```{r}
+data(UCBAdmissions)
+DF = as.data.frame(UCBAdmissions)
+```
+```{r}
+summary(DF)
+```
+```{r}
+str(DF)
+```
+
+```{r}
+head(DF)
+```
+two facors: Gender and Admit
+```{r}
+xt <- xtabs(Freq ~ Gender + Admit,data=DF)
+xt
+```
+##Flat tables
+```{r}
+str(warpbreaks)
+
+```
+
+```{r}
+head(warpbreaks)
+
+```
+
+```{r}
+warpbreaks$replicate <- rep(1:9, len = 54)
+str(warpbreaks)
+```
+
+```{r}
+warpbreaks
+
+```
+
+```{r}
+warpbreaks$replicate <- rep(1:9, len = 54)
+xt = xtabs(breaks ~.,data=warpbreaks)
+xt
+```
+
+```{r}
+ftable(xt)
+```
+##Size of a data set
+```{r}
+fakeData = rnorm(1e5)
+object.size(fakeData)
+```
+
+```{r}
+print(object.size(fakeData),units="Mb")
+```
+#Creating new variables
+##Why create new variables?
+- Often the raw data won't have a value you are looking for
+- You will need to transform the data to get the values you would like
+- Usually you will add those values to the data frames you are working with
+- Common variables to create
+    - Missingness indicators
+    - "Cutting up" quantitative variables
+    -  Applying transforms
+##Getting the data from the web
+```{r}
+#if(!file.exists("./data")){dir.create("./data")}
+#fileUrl <- "https://data.baltimorecity.gov/api/views/k5ry-ef3g/rows.csv?accessType=DOWNLOAD"
+#download.file(fileUrl,destfile="./data/restaurants.csv",method="curl")
+#restData <- read.csv("./data/restaurants.csv")
+```
+##Creating sequences
+Sometimes you need an index for your data set
+```{r}
+s1 <- seq(1,10,by=2); 
+s1
+```
+
+```{r}
+s2 <- seq(1,10,length=3);
+s2
+```
+Create index for variavle
+```{r}
+x <- c(1,3,8,25,100); 
+seq(along = x)
+```
+##Subsetting variables
+```{r}
+restData$nearMe = restData$neighborhood %in% c("Roland Park", "Homeland")
+table(restData$nearMe)
+```
+##Creating binary variables
+ifelse helps creat binary variables
+```{r}
+restData$zipWrong = ifelse(restData$zipCode < 0, TRUE, FALSE)
+table(restData$zipWrong,restData$zipCode < 0)
+```
+
+##Creating categorical variables
+```{r}
+restData$zipGroups = cut(restData$zipCode,breaks=quantile(restData$zipCode))
+table(restData$zipGroups)
+```
+
+```{r}
+table(restData$zipGroups,restData$zipCode)
+```
+##Easier cutting
+```{r}
+library(Hmisc);
+restData$zipGroups = cut2(restData$zipCode,g=4)
+table(restData$zipGroups)
+```
+##Creating factor variables
+```{r}
+restData$zcf <- factor(restData$zipCode)
+restData$zcf[1:10]
+```
+
+```{r}
+class(restData$zcf)
+```
+##Levels of factor variables
+relevel: The levels of a factor are re-ordered so that the level specified by ref is first and the others are moved down. This is useful for contr.treatment contrasts which take the first level as the reference. 
+
+```{r}
+yesno <- sample(c("yes","no"),size=10,replace=TRUE)
+yesnofac<- factor(yesno,levels=c("yes","no"))
+yesnofac
+```
+
+```{r}
+yesnofac1<-relevel(yesnofac,ref="yes")
+yesnofac1
+```
+
+```{r}
+yesnofac2<-relevel(yesnofac,ref="no")
+yesnofac2
+```
+
+```{r}
+as.numeric(yesnofac1)
+```
+
+```{r}
+as.numeric(yesnofac2)
+```
+##Cutting produces factor variables
+Hmisc package used; g : numbers of grounps
+```{r}
+library(Hmisc);
+restData$zipGroups = cut2(restData$zipCode,g=4)
+table(restData$zipGroups)
+```
+```{r}
+str(restData)
+```
+##Using the mutate function 
+mutate add the new factor variable and create a new data.frame
+```{r}
+library(Hmisc); 
+library(plyr);
+restData2 = mutate(restData,zipGroups=cut2(zipCode,g=4))
+table(restData2$zipGroups)
+```
+
+```{r}
+str(restData2)
+```
+##Common transforms
+- abs(x) absolute value
+- sqrt(x) square root
+- ceiling(x) ceiling(3.475) is 4
+- floor(x) floor(3.475) is 3
+- round(x,digits=n) roun(3.475,digits=2) is 3.48
+- signif(x,digits=n) signif(3.475,digits=2) is 3.5
+- cos(x), sin(x) etc.
+- log(x) natural logarithm
+- log2(x), log10(x) other common logs
+- exp(x) exponentiating x
+
+http://www.biostat.jhsph.edu/~ajaffe/lec_winterR/Lecture%202.pdf
+
+http://statmethods.net/management/functions.html
+
+##Notes and further reading
+
+- A tutorial from the developer of plyr - http://plyr.had.co.nz/09-user/
+
+- Andrew Jaffe's R notes http://www.biostat.jhsph.edu/~ajaffe/lec_winterR/Lecture%202.pdf
+
+#Reshaping data
+##The goal is tidy data
+1. Each variable forms a column
+2. Each observation forms a row
+3. Each table/file stores data about one kind of observation (e.g. people/hospitals).
+
+http://vita.had.co.nz/papers/tidy-data.pdf
+
+[Leek, Taub, and Pineda 2011 PLoS One](http://www.plosone.org/article/info%3Adoi%2F10.1371%2Fjournal.pone.0026895)
+
+##Start with reshaping
+```{r}
+library(reshape2)
+str(mtcars)
+head(mtcars)
+```
+##Melting data frames
+double the number of the observation due to measure.vars
+```{r}
+mtcars$carname <- rownames(mtcars)
+carMelt <- melt(mtcars,id=c("carname","gear","cyl"),measure.vars=c("mpg","hp"))
+str(carMelt)
+carMelt
+```
+##Casting data frames
+```{r}
+library(reshape2)
+cylData <- dcast(carMelt, cyl ~ variable);
+cylData
+```
+
+```{r}
+cylData <- dcast(carMelt, cyl ~ variable,mean)
+cylData
+```
+##Averaging values
+```{r}
+head(InsectSprays)
+```
+
+```{r}
+tapply(InsectSprays$count,InsectSprays$spray,sum)
+```
+##Another way - split
+```{r}
+spIns =  split(InsectSprays$count,InsectSprays$spray)
+# or spIns <- with(InsectSprays, split(count, spray))
+spIns
+```
+##Another way - apply
+```{r}
+sprCount = lapply(spIns,sum)
+sprCount
+```
+##Another way - combine
+```{r}
+unlist(sprCount)
+```
+
+```{r}
+sapply(spIns,sum)
+```
+##Another way - plyr package
+in  plyr package, it is "summarise" rather than "summarize"
+```{r}
+ddply(InsectSprays,.(spray),summarise,sum=sum(count))
+```
+##Creating a new variable
+```{r}
+spraySums <- ddply(InsectSprays,.(spray),summarise,sum=ave(count,FUN=sum))
+dim(spraySums)
+```
+```{r}
+spraySums
+```
+split the count column by the spray column.
+```{r}
+count_by_spray <- with(InsectSprays, split(count, spray))
+```
+apply the statistic to each element of the list. Lets use the mean here.
+```{r}
+count_by_spray <- with(InsectSprays, split(count, spray))
+mean_by_spray <- lapply(count_by_spray, mean)
+unlist(mean_by_spray)
+```
+##lit-apply-combine problems(S-A-C)
+We can do even better than that however. tapply, aggregate and by all provide 
+a one-function solution to these S-A-C problems.
+```{r}
+with(InsectSprays, tapply(count, spray, mean))
+```
+
+```{r}
+with(InsectSprays, by(count, spray, mean))
+```
+```{r}
+aggregate(count ~ spray, InsectSprays, mean)
+```
+
+```{r}
+dlply(InsectSprays, .(spray), summarise, mean.count = mean(count))
+```
+One tiny variation on the problem is when you want the output statistic vector to have the same length as the original input vectors. For this, there is the ave function (which provides mean as the default function).
+```{r}
+with(InsectSprays, ave(count, spray))
+```
+
+
+##More information
+- A tutorial from the developer of plyr - http://plyr.had.co.nz/09-user/
+- A nice reshape tutorial http://www.slideshare.net/jeffreybreen/reshaping-data-in-r
+- A good plyr primer - http://www.r-bloggers.com/a-quick-primer-on-split-apply-combine-problems/
+- See also the functions
+    - acast - for casting as multi-dimensional arrays
+    - arrange - for faster reordering without using order() commands
+    - mutate - adding new variables
+    
+#Merging data
+##Peer review experiment data
+[data source]("http://www.plosone.org/article/info:doi/10.1371/journal.pone.0026895")
+```{r}
+#if(!file.exists("./data")){dir.create("./data")}
+#fileUrl1 = "https://dl.dropboxusercontent.com/u/7710864/data/reviews-apr29.csv"
+#fileUrl2 = "https://dl.dropboxusercontent.com/u/7710864/data/solutions-apr29.csv"
+##download.file(fileUrl1,destfile="./data/reviews.csv",method="curl")
+#download.file(fileUrl2,destfile="./data/solutions.csv",method="curl")
+reviews = read.csv("./data/reviews.csv");
+solutions <- read.csv("./data/solutions.csv");
+```
+
+```{r}
+#str(reviews)
+head(reviews)
+```
+```{r}
+#str(solutions)
+head(solutions)
+```
+##Merging data - merge()
+- Merges data frames
+- Important parameters: x,y,by,by.x,by.y,all
+```{r}
+names(reviews)
+```
+```{r}
+names(solutions)
+```
+```{r}
+mergedData = merge(reviews,solutions,by.x="solution_id",by.y="id",all=TRUE)
+head(mergedData)
+```
+##Default - merge all common column names
+
+```{r}
+intersect(names(solutions),names(reviews))
+```
+```{r}
+mergedData2 = merge(reviews,solutions,all=TRUE)
+head(mergedData2)
+```
+##Using join in the plyr package
+Faster, but less full featured - defaults to left join, see help file for more
+```{r}
+df1 = data.frame(id=sample(1:10),x=rnorm(10))
+df2 = data.frame(id=sample(1:10),y=rnorm(10))
+df1 
+df2
+arrange(join(df1,df2),id)
+```
+```{r}
+df1 = data.frame(x=rnorm(10),id=sample(1:10))
+df2 = data.frame(id=sample(1:10),y=rnorm(10))
+arrange(join(df1,df2),id)
+```
+```{r}
+df1 = data.frame(x=rnorm(10),id1=sample(1:10),id2=sample(1:10))
+df2 = data.frame(y=rnorm(10),id1=sample(1:10),id2=sample(1:10))
+df1
+df2
+arrange(join(df1,df2),id1)
+```
+##If you have multiple data frames
+```{r}
+df1 = data.frame(id=sample(1:10),x=rnorm(10))
+df2 = data.frame(id=sample(1:10),y=rnorm(10))
+df3 = data.frame(id=sample(1:10),z=rnorm(10))
+dfList = list(df1,df2,df3)
+join_all(dfList)
+```
+##More on merging data
+- The quick R data merging page - http://www.statmethods.net/management/merging.html
+- plyr information - http://plyr.had.co.nz/
+- Types of joins - http://en.wikipedia.org/wiki/Join_(SQL)
+
+
